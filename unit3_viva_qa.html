@@ -1,0 +1,124 @@
+
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--font-sans); }
+.container { padding: 1rem 0; }
+.search-bar { width: 100%; padding: 10px 14px; font-size: 15px; border: 0.5px solid var(--color-border-secondary); border-radius: var(--border-radius-md); margin-bottom: 1rem; background: var(--color-background-primary); color: var(--color-text-primary); }
+.tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 1.25rem; }
+.tab { padding: 6px 14px; font-size: 13px; border: 0.5px solid var(--color-border-secondary); border-radius: 20px; cursor: pointer; background: var(--color-background-primary); color: var(--color-text-secondary); transition: all 0.15s; }
+.tab.active { background: var(--color-background-info); color: var(--color-text-info); border-color: var(--color-border-info); font-weight: 500; }
+.qcard { border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); margin-bottom: 10px; overflow: hidden; }
+.qcard-q { padding: 14px 16px; cursor: pointer; display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; background: var(--color-background-primary); }
+.qcard-q:hover { background: var(--color-background-secondary); }
+.q-text { font-size: 14px; font-weight: 500; color: var(--color-text-primary); line-height: 1.5; }
+.badge { font-size: 11px; padding: 2px 8px; border-radius: 20px; white-space: nowrap; flex-shrink: 0; }
+.badge-hot { background: #FCEBEB; color: #A32D2D; border: 0.5px solid #F09595; }
+.badge-med { background: #FAEEDA; color: #854F0B; border: 0.5px solid #EF9F27; }
+.badge-all { background: #EAF3DE; color: #3B6D11; border: 0.5px solid #97C459; }
+.arrow { color: var(--color-text-tertiary); font-size: 12px; flex-shrink: 0; margin-top: 2px; }
+.qcard-a { display: none; padding: 14px 16px; font-size: 13.5px; line-height: 1.75; color: var(--color-text-primary); border-top: 0.5px solid var(--color-border-tertiary); background: var(--color-background-secondary); white-space: pre-wrap; }
+.qcard-a.open { display: block; }
+.topic-label { font-size: 11px; color: var(--color-text-tertiary); margin-top: 3px; }
+.count { font-size: 13px; color: var(--color-text-secondary); margin-bottom: 1rem; }
+</style>
+<div class="container">
+<h2 class="sr-only">Unit 3 Viva Q&A flashcard tool</h2>
+<input class="search-bar" type="text" id="search" placeholder="Search questions..." oninput="filter()" />
+<div class="tabs" id="tabs"></div>
+<div class="count" id="count"></div>
+<div id="cards"></div>
+</div>
+<script>
+const data = [
+  {t:"Neural Networks", q:"What is a neural network? What is it inspired by?", a:"A neural network is a computational model inspired by the biological brain. It consists of layers of interconnected nodes (neurons) — an input layer, one or more hidden layers, and an output layer. Each connection has a weight. The network learns by adjusting these weights based on training data.", hot:true},
+  {t:"Neural Networks", q:"What are the main components of a neural network?", a:"Input layer — receives raw features\nHidden layer(s) — extract patterns\nOutput layer — produces predictions\nWeights — strength of connections\nBiases — offset term in each neuron\nActivation functions — introduce non-linearity", hot:true},
+  {t:"Neural Networks", q:"What is an activation function? Why is it needed?", a:"An activation function introduces non-linearity into the network. Without it, stacking multiple layers would just be equivalent to a single linear transformation — useless for complex data.\n\nCommon ones:\n• Sigmoid: output in (0,1), used in older networks\n• ReLU (Rectified Linear Unit): max(0,x), most popular today\n• Tanh: output in (-1,1)\n• Softmax: converts outputs to probabilities (used in output layer for classification)", hot:true},
+  {t:"Neural Networks", q:"What is backpropagation? Explain step by step.", a:"Backpropagation is the algorithm used to train neural networks.\n\nSteps:\n1. Forward pass: input flows through the network, producing a prediction.\n2. Compute loss: compare prediction to true label using a loss function.\n3. Backward pass: compute the gradient of the loss with respect to each weight using the chain rule.\n4. Weight update: adjust weights using gradient descent: w = w - lr × ∂L/∂w\n\nKey tool: the chain rule from calculus, which allows gradients to flow backward through layers.", hot:true},
+  {t:"Neural Networks", q:"What is gradient descent? What are its types?", a:"Gradient descent is an optimization algorithm that minimizes the loss by moving weights in the direction of steepest decrease.\n\nUpdate rule: w = w - α × ∂L/∂w  (α = learning rate)\n\nTypes:\n• Batch GD: uses all training data per step — slow but stable\n• Stochastic GD (SGD): one sample per step — fast but noisy\n• Mini-batch GD: small batch per step — best of both", hot:false},
+  {t:"Neural Networks", q:"What is overfitting? How do you prevent it?", a:"Overfitting is when the model memorizes training data and fails to generalize to new data.\n\nPrevention methods:\n• Regularization (L1, L2)\n• Dropout — randomly deactivate neurons during training\n• More training data\n• Early stopping\n• Cross-validation", hot:false},
+  {t:"Kernel Methods", q:"What is a kernel function? Give the formal definition.", a:"A kernel function K(x, x') computes the inner product (similarity) between two data points in a high-dimensional feature space, without explicitly computing that transformation.\n\nFormal: K(x, x') = φ(x)ᵀ · φ(x')\n\nwhere φ is the (possibly infinite-dimensional) feature mapping. The key insight: we never need to compute φ explicitly.", hot:true},
+  {t:"Kernel Methods", q:"What is the kernel trick? Why is it important?", a:"The kernel trick allows us to operate in very high (or infinite) dimensional feature spaces implicitly, at the cost of just computing K(x, x') — a scalar.\n\nWithout it: mapping to high dimensions and computing dot products would be computationally infeasible.\nWith it: e.g., the RBF kernel operates in infinite dimensions but costs O(n) to compute.", hot:true},
+  {t:"Kernel Methods", q:"Name common kernel functions and when to use them.", a:"• Linear kernel: K(x,x') = xᵀx' — for linearly separable data\n• Polynomial kernel: K(x,x') = (xᵀx' + c)^d — captures feature interactions\n• RBF/Gaussian kernel: K(x,x') = exp(-γ||x-x'||²) — most widely used, handles complex boundaries\n• Sigmoid kernel: K(x,x') = tanh(αxᵀx' + c) — similar to neural nets", hot:false},
+  {t:"Kernel Methods", q:"What is a sparse kernel machine? What is sparsity here?", a:"A sparse kernel machine (like SVM) only uses a subset of training points — called support vectors — to define the decision boundary. Most training points have zero weight.\n\nSparsity means: the solution depends on very few points, making prediction fast and the model interpretable.\n\nContrast with dense methods like Gaussian Processes which use all training points.", hot:false},
+  {t:"Graphical Models", q:"What is a graphical model? What are the two main types?", a:"A graphical model is a probabilistic model where a graph encodes the conditional independence structure of a set of random variables.\n\nTypes:\n• Directed graphical models (Bayesian Networks / DAGs): edges encode causal/dependency direction\n• Undirected graphical models (Markov Random Fields): edges encode symmetric relationships\n\nJoint distribution factors according to the graph structure.", hot:true},
+  {t:"Graphical Models", q:"How does the joint distribution factorize in a directed graphical model?", a:"For a Directed Acyclic Graph (DAG), the joint probability factorizes as:\n\np(x) = ∏ₖ p(xₖ | pa(xₖ))\n\nwhere pa(xₖ) are the parents of node xₖ in the graph.\n\nExample from slides: p(a,b,c) = p(c|a,b) · p(b|a) · p(a)\n\nThis is the chain rule of probability, structured by the graph.", hot:true},
+  {t:"Graphical Models", q:"What is D-separation? Explain the three cases.", a:"D-separation determines whether two sets of nodes are conditionally independent given a third set, by checking if all paths between them are 'blocked'.\n\nThree node configurations:\n\n1. Tail-to-tail (c → a, c → b): c observed → a,b become independent. c unobserved → a,b are NOT independent.\n\n2. Head-to-tail (a → c → b): c observed → a,b become independent. c unobserved → a,b are NOT independent.\n\n3. Head-to-head (a → c ← b): c unobserved → a,b ARE independent (unconditionally). c observed → a,b become DEPENDENT (explaining away!).\n\nRule: head-to-tail and tail-to-tail nodes are blocked when observed; head-to-head nodes are blocked when UNOBSERVED.", hot:true},
+  {t:"Graphical Models", q:"What is 'explaining away'? Give the earthquake/truck example.", a:"Explaining away is a counter-intuitive phenomenon in head-to-head (collider) nodes.\n\nExample from slides:\n• Suppose 'house jumps' can be caused by either 'truck hits house' OR 'earthquake'\n• Both causes are independent in the prior\n• BUT if you observe 'house jumps', the two causes become anti-correlated: if you know a truck hit the house, the probability of an earthquake decreases — one cause 'explains away' the other.\n\nFormally: observing a collider node (or its descendants) creates dependence between its parents.", hot:true},
+  {t:"Graphical Models", q:"What is the Markov Blanket of a node?", a:"The Markov Blanket of a node xᵢ is the minimal set of nodes that, when observed, makes xᵢ independent of all other nodes in the graph.\n\nIn a directed graph: Markov Blanket = parents + children + other parents of children (co-parents). The co-parents are included because of explaining away.\n\nIn an undirected graph: Markov Blanket = simply all directly connected (neighbor) nodes.", hot:true},
+  {t:"Graphical Models", q:"What is ancestral sampling?", a:"Ancestral sampling is a method to generate samples from a directed graphical model.\n\nProcedure: Start from the root nodes (nodes with no parents) and sample them from their prior distributions. Then proceed topologically — for each node, sample from its conditional distribution given its already-sampled parents.\n\nUse: it reveals what the model 'believes' — i.e., what data it expects to generate.", hot:false},
+  {t:"EM Algorithm", q:"What is the EM algorithm? When is it used?", a:"EM (Expectation-Maximization) is an iterative algorithm for finding Maximum Likelihood Estimates (MLE) of parameters when some data is missing or there are latent (unobserved) variables.\n\nUsed when: direct maximization of the likelihood is hard, but the 'complete data' likelihood (if latent variables were known) would be easy to maximize.\n\nExamples: Gaussian Mixture Models, Hidden Markov Models, clustering.", hot:true},
+  {t:"EM Algorithm", q:"Explain the E-step and M-step of EM clearly.", a:"Setup: observed data X, latent data Y, parameters θ.\n\nE-Step (Expectation):\nCompute Q(θ; θ_old) = E[log p(X, Y | θ) | X, θ_old]\nIn other words: take the expected value of the complete-data log-likelihood, treating the current θ_old as fixed. This gives us a 'soft' estimate of the latent variables.\n\nM-Step (Maximization):\nMaximize Q(θ; θ_old) over θ to get θ_new.\nThis is guaranteed to increase (or maintain) the observed data log-likelihood.\n\nRepeat until convergence.", hot:true},
+  {t:"EM Algorithm", q:"Why does EM work? What is the guarantee?", a:"EM works because of Jensen's Inequality applied to the log-likelihood.\n\nThe observed log-likelihood l(θ; X) can be decomposed as:\nl(θ; X) = L(q, θ) + KL(q || p(Y|X,θ))\n\nSince KL divergence ≥ 0, L(q,θ) is always a lower bound on l(θ;X).\n\nE-step: tightens the bound by setting q(Y) = p(Y|X,θ_old), making KL=0.\nM-step: increases the lower bound by optimizing θ.\n\nGuarantee: the observed log-likelihood increases (or stays the same) at every iteration. Convergence to a LOCAL maximum is guaranteed.", hot:true},
+  {t:"EM Algorithm", q:"What is a Gaussian Mixture Model (GMM)? How does EM fit it?", a:"A GMM models data as a weighted sum of m Gaussian distributions:\nf(x) = Σⱼ pⱼ · N(x; μⱼ, σⱼ²)\n\nLatent variable Y indicates which Gaussian generated each point.\n\nEM for GMM:\nE-step: compute 'responsibilities' r(i,j) = P(Yᵢ=j | xᵢ, θ_old) — how much each Gaussian is responsible for each point.\n\nM-step: update parameters:\n• μⱼ_new = Σᵢ xᵢ·r(i,j) / Σᵢ r(i,j)  (weighted mean)\n• σⱼ²_new = weighted variance\n• pⱼ_new = (1/n) Σᵢ r(i,j)  (mixing proportion)\n\nThis is soft clustering — each point is partially assigned to multiple clusters.", hot:true},
+  {t:"EM Algorithm", q:"What is KL divergence? Is it a true distance metric?", a:"KL divergence measures 'how different' distribution P is from distribution Q:\n\nKL(P||Q) = ∫ P(x) · log[P(x)/Q(x)] dx\n\nKey properties:\n• KL(P||Q) ≥ 0 always (proven via Jensen's inequality on -log, which is convex)\n• KL(P||Q) = 0 if and only if P = Q\n• NOT a true metric: it's ASYMMETRIC — KL(P||Q) ≠ KL(Q||P)\n• Does NOT satisfy the triangle inequality\n\nInterpretation: information lost when Q is used to approximate P.", hot:false},
+  {t:"Bayesian Networks", q:"What is a Bayesian Network?", a:"A Bayesian Network is a directed acyclic graph (DAG) where:\n• Each node represents a random variable\n• Each directed edge represents a conditional dependency on a 'parent'\n• The joint distribution factorizes as: p(x) = ∏ₖ p(xₖ | pa(xₖ))\n\nKey property: an unobserved node has NO effect on its parents' distributions — it only affects its descendants. This is why 'direction of arrows is like time — causes only affect the future.'", hot:true},
+  {t:"Bayesian Networks", q:"What is the plate notation in graphical models?", a:"Plate notation is a compact way to represent multiple replicated variables with the same dependencies in a graphical model.\n\nA rectangle (plate) with a number N inside means: repeat everything inside that plate N times.\n\nExample from slides: in Bayesian polynomial regression, a plate contains tₙ (output) and xₙ (input), repeated N times — meaning the same weight vector w generates all observations.", hot:false},
+  {t:"Cond. Independence", q:"Explain the three types of nodes and conditional independence rules.", a:"From your slides (D-separation):\n\n1. TAIL-TO-TAIL (c → {a,b}):\n   • c unobserved: a and b share a common cause → NOT independent\n   • c observed: path blocked → a,b ARE independent\n\n2. HEAD-TO-TAIL (a → c → b):\n   • c unobserved: a influences b through c → NOT independent\n   • c observed: path blocked → a,b ARE independent\n\n3. HEAD-TO-HEAD / COLLIDER (a → c ← b):\n   • c unobserved: a,b ARE independent (p(a,b) = p(a)p(b))\n   • c observed: creates dependence → NOT independent (explaining away!)\n\nNote: head-to-head is the OPPOSITE of the other two.", hot:true},
+  {t:"HMM & Sampling", q:"What is a Hidden Markov Model (HMM)?", a:"An HMM is a graphical model for sequential data where:\n• Hidden states x₁, x₂, ..., xₘ form a Markov chain: each state depends only on the previous state\n• Each hidden state generates an observation\n\nParameters:\n• Initial state distribution\n• Transition probabilities: p(xₜ | xₜ₋₁)\n• Emission probabilities: p(observation | state)\n\nFrom slides: the chain structure reduces parameters from K^M - 1 to K² - 1 when parameters are shared across time (stationary sequences). This is the key advantage.", hot:true},
+  {t:"HMM & Sampling", q:"What is MCMC (Markov Chain Monte Carlo)? When is it used?", a:"MCMC is a class of sampling methods used to draw samples from complex probability distributions that are hard to sample from directly.\n\nIdea: construct a Markov chain whose stationary distribution IS the target distribution p(x). Running the chain for long enough produces approximate samples from p(x).\n\nCommon variants: Metropolis-Hastings, Gibbs sampling.\n\nUsed when: exact inference is intractable (which is most real-world models).", hot:true},
+  {t:"HMM & Sampling", q:"What is Gibbs sampling?", a:"Gibbs sampling is a special case of MCMC for sampling from multivariate distributions.\n\nProcedure: cycle through each variable and sample it from its conditional distribution given the current values of all other variables.\n\np(xᵢ | x₋ᵢ) — sample xᵢ given all other xⱼ\n\nAdvantage: each conditional is often much simpler than the full joint distribution.\nConnection to graphical models: only the Markov Blanket of xᵢ matters — all other variables are irrelevant given the blanket.", hot:false},
+  {t:"K-Means", q:"Explain the K-Means algorithm step by step.", a:"K-Means clusters data into K groups by minimizing within-cluster variance.\n\nAlgorithm:\n1. Initialize K cluster centroids (randomly or with K-Means++)\n2. Assignment step: assign each point to the nearest centroid\n   label(i) = argmin_k ||xᵢ - μₖ||²\n3. Update step: recompute each centroid as the mean of assigned points\n   μₖ = (1/|Cₖ|) Σᵢ∈Cₖ xᵢ\n4. Repeat steps 2-3 until assignments stop changing\n\nConvergence: guaranteed to converge (to a local minimum).\nComplexity: O(n·K·d·iterations)", hot:true},
+  {t:"K-Means", q:"What are the limitations of K-Means?", a:"• Must specify K in advance — often unknown\n• Sensitive to initialization — can converge to bad local minima\n• Assumes spherical, equal-size clusters — fails on elongated or irregular clusters\n• Sensitive to outliers — mean is influenced by extreme points\n• Cannot handle categorical data directly\n• Hard assignments — unlike GMMs which give soft probabilistic assignments", hot:true},
+  {t:"K-Means", q:"What is the connection between K-Means and EM/GMMs?", a:"K-Means is actually a hard-assignment, zero-variance limit of the EM algorithm for GMMs.\n\nIn GMM-EM:\n• E-step gives soft responsibilities r(i,j) ∈ [0,1]\n• M-step updates weighted means\n\nIn K-Means:\n• Assignment step gives hard assignments: 1 to nearest cluster, 0 to all others\n• Update step computes unweighted means\n\nSo K-Means = GMM-EM with equal, vanishingly small variances and hard cluster assignments.", hot:false},
+  {t:"Latent Variable Models", q:"What is a latent variable model? Give examples.", a:"A latent variable model contains unobserved (hidden) variables that explain the structure in the observed data.\n\nExamples:\n• GMM: latent variable = which Gaussian generated each point\n• HMM: latent variable = hidden state at each time step\n• PCA / Factor Analysis: latent variable = lower-dimensional representation\n• LDA (topic models): latent variable = topic assignments\n\nAdvantage: latent variables can capture structure that is too complex to model directly.", hot:false},
+  {t:"Undirected Models", q:"What is a Markov Random Field (MRF)? How does its joint factorize?", a:"An MRF (also called Undirected Graphical Model) represents dependencies via undirected edges. The joint distribution factorizes over CLIQUES:\n\np(x) = (1/Z) ∏_C ψ_C(x_C)\n\nwhere ψ_C are potential functions on cliques C, and Z is the partition function (normalization constant).\n\nKey difference from directed models: no causal direction. Conditional independence is simpler — observed nodes just block paths.", hot:false},
+  {t:"Undirected Models", q:"What is a potential function (clique potential)?", a:"A potential function ψ_C(x_C) is an unnormalized function defined over a clique C that assigns a non-negative 'compatibility score' to configurations of variables in that clique.\n\nOften written as: ψ_C(x_C) = exp(-E_C(x_C))  where E is an energy function.\n\nHigher potential = more compatible/likely configuration.\n\nExample from slides (image denoising MRF):\nE(x,y) = h·Σᵢ xᵢ - β·Σᵢ<ⱼ xᵢxⱼ + η·Σᵢ(xᵢ-yᵢ)²", hot:false},
+  {t:"Model Comparison", q:"What is the key difference between directed and undirected graphical models?", a:"Directed (Bayesian Networks):\n• Edges are directed — encode causal/conditional dependencies\n• Joint = product of conditionals: p(x) = ∏ p(xₖ | parents)\n• Can represent head-to-head (collider) independencies precisely\n• Natural for generative models\n\nUndirected (MRFs):\n• Edges are undirected — encode symmetric relationships\n• Joint = product of clique potentials / Z\n• Conditional independence is simpler to read off\n• Better for certain spatial/relational models (image processing)\n\nNeither is strictly more powerful — each can represent some independencies the other cannot!", hot:true},
+];
+
+const topics = ["All", ...new Set(data.map(d => d.t))];
+let activeTab = "All";
+let searchTerm = "";
+
+function render() {
+  const filtered = data.filter(d => {
+    const matchTab = activeTab === "All" || d.t === activeTab;
+    const matchSearch = !searchTerm || d.q.toLowerCase().includes(searchTerm) || d.a.toLowerCase().includes(searchTerm);
+    return matchTab && matchSearch;
+  });
+  
+  const cc = document.getElementById("count");
+  cc.textContent = filtered.length + " question" + (filtered.length !== 1 ? "s" : "");
+  
+  const container = document.getElementById("cards");
+  container.innerHTML = "";
+  filtered.forEach((d, i) => {
+    const card = document.createElement("div");
+    card.className = "qcard";
+    const badge = d.hot ? '<span class="badge badge-hot">high priority</span>' : '<span class="badge badge-all">know it</span>';
+    card.innerHTML = `<div class="qcard-q" onclick="toggle(this)">
+      <div><div class="q-text">${d.q}</div><div class="topic-label">${d.t}</div></div>
+      <div style="display:flex;align-items:center;gap:8px;">${badge}<span class="arrow">&#9660;</span></div>
+    </div><div class="qcard-a">${d.a}</div>`;
+    container.appendChild(card);
+  });
+}
+
+function toggle(el) {
+  const ans = el.nextElementSibling;
+  const arr = el.querySelector(".arrow");
+  ans.classList.toggle("open");
+  arr.style.transform = ans.classList.contains("open") ? "rotate(180deg)" : "";
+}
+
+function filter() {
+  searchTerm = document.getElementById("search").value.toLowerCase();
+  render();
+}
+
+const tabContainer = document.getElementById("tabs");
+topics.forEach(t => {
+  const btn = document.createElement("button");
+  btn.className = "tab" + (t === "All" ? " active" : "");
+  btn.textContent = t;
+  btn.onclick = () => {
+    activeTab = t;
+    document.querySelectorAll(".tab").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    render();
+  };
+  tabContainer.appendChild(btn);
+});
+
+render();
+</script>
